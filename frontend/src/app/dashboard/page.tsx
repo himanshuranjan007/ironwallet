@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useNear } from "@/context/NearContext";
@@ -20,6 +20,7 @@ import {
 interface WalletWithInfo extends StoredWallet {
   info?: WalletInfo;
   balance?: string;
+  loading?: boolean;
   error?: boolean;
 }
 
@@ -27,27 +28,40 @@ export default function DashboardPage() {
   const { isSignedIn, loading: nearLoading } = useNear();
   const router = useRouter();
   const [wallets, setWallets] = useState<WalletWithInfo[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [initialLoad, setInitialLoad] = useState(true);
 
-  const fetchWallets = async () => {
-    setLoading(true);
+  const enrichWallet = useCallback(async (w: StoredWallet): Promise<WalletWithInfo> => {
+    try {
+      const [info, balance] = await Promise.all([
+        getWalletInfo(w.accountId),
+        getAccountBalance(w.accountId),
+      ]);
+      return { ...w, info, balance, loading: false };
+    } catch {
+      return { ...w, error: true, loading: false };
+    }
+  }, []);
+
+  const loadWallets = useCallback(async () => {
     const stored = getStoredWallets();
-    const enriched = await Promise.all(
-      stored.map(async (w) => {
-        try {
-          const [info, balance] = await Promise.all([
-            getWalletInfo(w.accountId),
-            getAccountBalance(w.accountId),
-          ]);
-          return { ...w, info, balance } as WalletWithInfo;
-        } catch {
-          return { ...w, error: true } as WalletWithInfo;
-        }
-      })
-    );
-    setWallets(enriched);
-    setLoading(false);
-  };
+    if (stored.length === 0) {
+      setWallets([]);
+      setInitialLoad(false);
+      return;
+    }
+
+    // Show wallets immediately with loading state
+    setWallets(stored.map((w) => ({ ...w, loading: true })));
+    setInitialLoad(false);
+
+    // Enrich all wallets in parallel, update each as it resolves
+    stored.forEach(async (w) => {
+      const enriched = await enrichWallet(w);
+      setWallets((prev) =>
+        prev.map((p) => (p.accountId === enriched.accountId ? enriched : p))
+      );
+    });
+  }, [enrichWallet]);
 
   useEffect(() => {
     if (!nearLoading && !isSignedIn) {
@@ -55,9 +69,9 @@ export default function DashboardPage() {
       return;
     }
     if (isSignedIn) {
-      fetchWallets();
+      loadWallets();
     }
-  }, [isSignedIn, nearLoading, router]);
+  }, [isSignedIn, nearLoading, router, loadWallets]);
 
   const handleRemove = (accountId: string) => {
     if (confirm("Remove this wallet from your dashboard? This only removes it from your local list.")) {
@@ -66,7 +80,7 @@ export default function DashboardPage() {
     }
   };
 
-  if (nearLoading || (!isSignedIn && loading)) {
+  if (nearLoading || (initialLoad && isSignedIn)) {
     return (
       <div className="flex min-h-[60vh] items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-accent" />
@@ -85,7 +99,7 @@ export default function DashboardPage() {
         </div>
         <div className="flex gap-3">
           <button
-            onClick={fetchWallets}
+            onClick={loadWallets}
             className="rounded-lg border border-card-border p-2.5 text-muted transition-colors hover:bg-card hover:text-foreground"
             title="Refresh"
           >
@@ -101,16 +115,7 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {loading ? (
-        <div className="grid gap-4 sm:grid-cols-2">
-          {[1, 2].map((i) => (
-            <div
-              key={i}
-              className="h-44 animate-pulse rounded-2xl border border-card-border bg-card"
-            />
-          ))}
-        </div>
-      ) : wallets.length === 0 ? (
+      {wallets.length === 0 ? (
         <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-card-border py-20">
           <Shield className="mb-4 h-12 w-12 text-muted" />
           <h2 className="text-xl font-semibold">No wallets yet</h2>
@@ -153,7 +158,13 @@ export default function DashboardPage() {
                   {w.accountId}
                 </p>
 
-                {w.error ? (
+                {w.loading ? (
+                  <div className="flex gap-4">
+                    <div className="h-4 w-24 animate-pulse rounded bg-card-border" />
+                    <div className="h-4 w-20 animate-pulse rounded bg-card-border" />
+                    <div className="ml-auto h-4 w-16 animate-pulse rounded bg-card-border" />
+                  </div>
+                ) : w.error ? (
                   <p className="text-sm text-danger">
                     Could not load wallet info
                   </p>
@@ -173,9 +184,7 @@ export default function DashboardPage() {
                       </div>
                     )}
                   </div>
-                ) : (
-                  <div className="h-5 w-32 animate-pulse rounded bg-card-border" />
-                )}
+                ) : null}
               </Link>
             </div>
           ))}

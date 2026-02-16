@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { useNear } from "@/context/NearContext";
 import {
@@ -12,6 +12,7 @@ import {
   confirmRequest,
   revokeConfirmation,
   deleteRequest,
+  invalidateCache,
 } from "@/lib/multisig";
 import { addStoredWallet } from "@/lib/storage";
 import type { WalletInfo, MultiSigRequestView } from "@/types";
@@ -32,6 +33,7 @@ import { getConfig } from "@/config/near";
 
 export default function WalletPage() {
   const params = useParams();
+  const searchParams = useSearchParams();
   const walletId = params.id as string;
   const { selector, accountId, isSignedIn } = useNear();
 
@@ -45,54 +47,61 @@ export default function WalletPage() {
 
   const config = getConfig();
 
+  // Check if we just came from a wallet creation (MyNearWallet redirect)
+  const isNewWallet = !!searchParams.get("transactionHashes");
+
   const fetchData = useCallback(
-    async (opts?: { retries?: number }) => {
-      const maxRetries = opts?.retries ?? 0;
+    async () => {
+      try {
+        const [walletInfo, reqs, bal] = await Promise.all([
+          getWalletInfo(walletId),
+          getRequests(walletId),
+          getAccountBalance(walletId),
+        ]);
+        setInfo(walletInfo);
+        setRequests(reqs);
+        setBalance(bal);
+        setError(null);
 
-      for (let attempt = 0; attempt <= maxRetries; attempt++) {
-        try {
-          const [walletInfo, reqs, bal] = await Promise.all([
-            getWalletInfo(walletId),
-            getRequests(walletId),
-            getAccountBalance(walletId),
-          ]);
-          setInfo(walletInfo);
-          setRequests(reqs);
-          setBalance(bal);
-          setError(null);
-
-          addStoredWallet({
-            accountId: walletId,
-            name: walletId.split(".")[0],
-            createdAt: Date.now(),
-          });
-          return;
-        } catch (err) {
-          console.error(`Failed to load wallet (attempt ${attempt + 1}):`, err);
-          if (attempt < maxRetries) {
-            await new Promise((r) => setTimeout(r, 2000 * (attempt + 1)));
-          } else {
-            setError(
-              `Could not load wallet. ${err instanceof Error ? err.message : "Make sure the account exists and has a multisig contract deployed."}`
-            );
-          }
-        }
+        addStoredWallet({
+          accountId: walletId,
+          name: walletId.split(".")[0],
+          createdAt: Date.now(),
+        });
+      } catch (err) {
+        console.error("Failed to load wallet:", err);
+        setError(
+          `Could not load wallet. ${err instanceof Error ? err.message : "Make sure the account exists and has a multisig contract deployed."}`
+        );
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
     },
     [walletId]
   );
 
   useEffect(() => {
     setLoading(true);
-    fetchData({ retries: 3 }).finally(() => setLoading(false));
-  }, [fetchData]);
+
+    if (isNewWallet) {
+      // Newly created wallet -- wait a moment for finalization then fetch
+      const timer = setTimeout(() => fetchData(), 1500);
+      return () => clearTimeout(timer);
+    }
+
+    fetchData();
+  }, [fetchData, isNewWallet]);
+
+  const refreshAfterAction = useCallback(() => {
+    invalidateCache(walletId);
+    fetchData();
+  }, [walletId, fetchData]);
 
   const handleConfirm = async (requestId: number) => {
     if (!selector) return;
     try {
       await confirmRequest(selector, walletId, requestId);
-      fetchData();
+      refreshAfterAction();
     } catch (err: unknown) {
       alert(err instanceof Error ? err.message : "Failed to confirm");
     }
@@ -102,7 +111,7 @@ export default function WalletPage() {
     if (!selector) return;
     try {
       await revokeConfirmation(selector, walletId, requestId);
-      fetchData();
+      refreshAfterAction();
     } catch (err: unknown) {
       alert(err instanceof Error ? err.message : "Failed to revoke");
     }
@@ -113,7 +122,7 @@ export default function WalletPage() {
     if (!confirm("Delete this request?")) return;
     try {
       await deleteRequest(selector, walletId, requestId);
-      fetchData();
+      refreshAfterAction();
     } catch (err: unknown) {
       alert(err instanceof Error ? err.message : "Failed to delete");
     }
@@ -127,8 +136,35 @@ export default function WalletPage() {
 
   if (loading) {
     return (
-      <div className="flex min-h-[60vh] items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-accent" />
+      <div className="mx-auto max-w-4xl px-4 py-10">
+        <Link
+          href="/dashboard"
+          className="mb-6 inline-flex items-center gap-1 text-sm text-muted transition-colors hover:text-foreground"
+        >
+          <ChevronLeft className="h-4 w-4" />
+          Back to Dashboard
+        </Link>
+
+        {/* Skeleton header */}
+        <div className="mb-6 rounded-2xl border border-card-border bg-card p-6">
+          <div className="flex items-center gap-2 mb-3">
+            <Shield className="h-6 w-6 text-accent" />
+            <div className="h-7 w-40 animate-pulse rounded bg-card-border" />
+          </div>
+          <div className="h-4 w-64 animate-pulse rounded bg-card-border mb-6" />
+          <div className="border-t border-card-border pt-4">
+            <div className="h-4 w-48 animate-pulse rounded bg-card-border mb-3" />
+            <div className="flex gap-2">
+              <div className="h-8 w-32 animate-pulse rounded-lg bg-card-border" />
+              <div className="h-8 w-32 animate-pulse rounded-lg bg-card-border" />
+            </div>
+          </div>
+        </div>
+
+        <div className="flex items-center justify-center py-8">
+          <Loader2 className="h-6 w-6 animate-spin text-accent" />
+          <span className="ml-2 text-sm text-muted">Loading wallet data...</span>
+        </div>
       </div>
     );
   }
@@ -149,6 +185,18 @@ export default function WalletPage() {
             Wallet Not Found
           </h2>
           <p className="mt-2 text-sm text-muted">{error}</p>
+          <button
+            onClick={() => {
+              setError(null);
+              setLoading(true);
+              invalidateCache(walletId);
+              fetchData();
+            }}
+            className="mt-4 inline-flex items-center gap-2 rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-black"
+          >
+            <RefreshCw className="h-4 w-4" />
+            Retry
+          </button>
         </div>
       </div>
     );
@@ -240,7 +288,10 @@ export default function WalletPage() {
         </h2>
         <div className="flex gap-3">
           <button
-            onClick={() => fetchData()}
+            onClick={() => {
+              invalidateCache(walletId);
+              fetchData();
+            }}
             className="rounded-lg border border-card-border p-2.5 text-muted transition-colors hover:bg-card hover:text-foreground"
           >
             <RefreshCw className="h-4 w-4" />
@@ -285,7 +336,7 @@ export default function WalletPage() {
           onClose={() => setShowNewRequest(false)}
           onSuccess={() => {
             setShowNewRequest(false);
-            fetchData();
+            refreshAfterAction();
           }}
         />
       )}

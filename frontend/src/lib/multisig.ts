@@ -13,39 +13,66 @@ const provider = new JsonRpcProvider({ url: config.nodeUrl });
 
 const { functionCall } = actionCreators;
 
+// ── Simple in-memory cache ──────────────────────────────────────────────────
+
+const cache = new Map<string, { data: unknown; ts: number }>();
+const CACHE_TTL = 10_000; // 10 seconds
+
+function getCached<T>(key: string): T | null {
+  const entry = cache.get(key);
+  if (entry && Date.now() - entry.ts < CACHE_TTL) return entry.data as T;
+  return null;
+}
+
+function setCache(key: string, data: unknown) {
+  cache.set(key, { data, ts: Date.now() });
+}
+
+export function invalidateCache(prefix?: string) {
+  if (!prefix) {
+    cache.clear();
+    return;
+  }
+  for (const key of cache.keys()) {
+    if (key.startsWith(prefix)) cache.delete(key);
+  }
+}
+
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
 function encodeArgs(args: Record<string, unknown>): string {
   const json = JSON.stringify(args);
-  // Browser-safe base64 encoding
-  if (typeof btoa === "function") {
-    return btoa(json);
-  }
+  if (typeof btoa === "function") return btoa(json);
   return Buffer.from(json).toString("base64");
 }
 
 function decodeResult(result: unknown): unknown {
   const res = result as { result: number[] };
   const bytes = new Uint8Array(res.result);
-  const text = new TextDecoder().decode(bytes);
-  return JSON.parse(text);
+  return JSON.parse(new TextDecoder().decode(bytes));
 }
 
-// ── View calls (no wallet needed) ────────────────────────────────────────────
+// ── View calls (optimistic finality for speed) ──────────────────────────────
 
 export async function viewMethod(
   contractId: string,
   methodName: string,
   args: Record<string, unknown> = {}
 ): Promise<unknown> {
+  const cacheKey = `${contractId}:${methodName}:${JSON.stringify(args)}`;
+  const cached = getCached(cacheKey);
+  if (cached !== null) return cached;
+
   const res = await provider.query({
     request_type: "call_function",
     account_id: contractId,
     method_name: methodName,
     args_base64: encodeArgs(args),
-    finality: "final",
+    finality: "optimistic",
   });
-  return decodeResult(res);
+  const data = decodeResult(res);
+  setCache(cacheKey, data);
+  return data;
 }
 
 export async function getWalletInfo(
@@ -88,12 +115,18 @@ export async function getNumConfirmations(
 export async function getAccountBalance(
   accountId: string
 ): Promise<string> {
+  const cacheKey = `balance:${accountId}`;
+  const cached = getCached<string>(cacheKey);
+  if (cached !== null) return cached;
+
   const account = await provider.query({
     request_type: "view_account",
     account_id: accountId,
-    finality: "final",
+    finality: "optimistic",
   });
-  return (account as unknown as { amount: string }).amount;
+  const amount = (account as unknown as { amount: string }).amount;
+  setCache(cacheKey, amount);
+  return amount;
 }
 
 export async function accountExists(accountId: string): Promise<boolean> {
@@ -101,7 +134,7 @@ export async function accountExists(accountId: string): Promise<boolean> {
     await provider.query({
       request_type: "view_account",
       account_id: accountId,
-      finality: "final",
+      finality: "optimistic",
     });
     return true;
   } catch {
@@ -122,6 +155,7 @@ export async function addRequest(
   request: MultiSigRequestInput
 ) {
   const wallet = await selector.wallet();
+  invalidateCache(contractId);
   return wallet.signAndSendTransaction({
     receiverId: contractId,
     actions: [
@@ -136,6 +170,7 @@ export async function confirmRequest(
   requestId: number
 ) {
   const wallet = await selector.wallet();
+  invalidateCache(contractId);
   return wallet.signAndSendTransaction({
     receiverId: contractId,
     actions: [
@@ -155,6 +190,7 @@ export async function revokeConfirmation(
   requestId: number
 ) {
   const wallet = await selector.wallet();
+  invalidateCache(contractId);
   return wallet.signAndSendTransaction({
     receiverId: contractId,
     actions: [
@@ -174,6 +210,7 @@ export async function deleteRequest(
   requestId: number
 ) {
   const wallet = await selector.wallet();
+  invalidateCache(contractId);
   return wallet.signAndSendTransaction({
     receiverId: contractId,
     actions: [
