@@ -45,32 +45,47 @@ export default function WalletPage() {
 
   const config = getConfig();
 
-  const fetchData = useCallback(async () => {
-    try {
-      const [walletInfo, reqs, bal] = await Promise.all([
-        getWalletInfo(walletId),
-        getRequests(walletId),
-        getAccountBalance(walletId),
-      ]);
-      setInfo(walletInfo);
-      setRequests(reqs);
-      setBalance(bal);
-      setError(null);
+  const fetchData = useCallback(
+    async (opts?: { retries?: number }) => {
+      const maxRetries = opts?.retries ?? 0;
 
-      addStoredWallet({
-        accountId: walletId,
-        name: walletId.split(".")[0],
-        createdAt: Date.now(),
-      });
-    } catch {
-      setError("Could not load wallet. Make sure the account exists and has a multisig contract deployed.");
-    } finally {
+      for (let attempt = 0; attempt <= maxRetries; attempt++) {
+        try {
+          const [walletInfo, reqs, bal] = await Promise.all([
+            getWalletInfo(walletId),
+            getRequests(walletId),
+            getAccountBalance(walletId),
+          ]);
+          setInfo(walletInfo);
+          setRequests(reqs);
+          setBalance(bal);
+          setError(null);
+
+          addStoredWallet({
+            accountId: walletId,
+            name: walletId.split(".")[0],
+            createdAt: Date.now(),
+          });
+          return;
+        } catch (err) {
+          console.error(`Failed to load wallet (attempt ${attempt + 1}):`, err);
+          if (attempt < maxRetries) {
+            await new Promise((r) => setTimeout(r, 2000 * (attempt + 1)));
+          } else {
+            setError(
+              `Could not load wallet. ${err instanceof Error ? err.message : "Make sure the account exists and has a multisig contract deployed."}`
+            );
+          }
+        }
+      }
       setLoading(false);
-    }
-  }, [walletId]);
+    },
+    [walletId]
+  );
 
   useEffect(() => {
-    fetchData();
+    setLoading(true);
+    fetchData({ retries: 3 }).finally(() => setLoading(false));
   }, [fetchData]);
 
   const handleConfirm = async (requestId: number) => {

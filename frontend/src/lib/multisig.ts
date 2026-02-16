@@ -16,12 +16,19 @@ const { functionCall } = actionCreators;
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
 function encodeArgs(args: Record<string, unknown>): string {
-  return Buffer.from(JSON.stringify(args)).toString("base64");
+  const json = JSON.stringify(args);
+  // Browser-safe base64 encoding
+  if (typeof btoa === "function") {
+    return btoa(json);
+  }
+  return Buffer.from(json).toString("base64");
 }
 
 function decodeResult(result: unknown): unknown {
   const res = result as { result: number[] };
-  return JSON.parse(Buffer.from(res.result).toString());
+  const bytes = new Uint8Array(res.result);
+  const text = new TextDecoder().decode(bytes);
+  return JSON.parse(text);
 }
 
 // ── View calls (no wallet needed) ────────────────────────────────────────────
