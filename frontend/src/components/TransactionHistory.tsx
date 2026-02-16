@@ -61,21 +61,19 @@ export function TransactionHistory({ walletId }: { walletId: string }) {
 
   return (
     <div>
-      <h2 className="mb-4 text-xl font-bold">Transaction History</h2>
-
       {loading ? (
         <div className="space-y-3">
           {[1, 2, 3].map((i) => (
             <div
               key={i}
-              className="h-14 animate-pulse rounded-xl border border-card-border bg-card"
+              className="h-14 animate-pulse rounded-xl border border-[#e2e2e2] bg-white"
             />
           ))}
         </div>
       ) : txns.length === 0 ? (
-        <div className="flex flex-col items-center rounded-2xl border border-dashed border-card-border py-10">
-          <Clock className="mb-2 h-8 w-8 text-muted" />
-          <p className="text-muted text-sm">No transactions yet</p>
+        <div className="flex flex-col items-center rounded-2xl border-2 border-dashed border-[#e2e2e2] bg-white py-10">
+          <Clock className="mb-2 h-8 w-8 text-[#636669]" />
+          <p className="text-[#636669] text-sm font-medium">No transactions yet</p>
         </div>
       ) : (
         <>
@@ -83,56 +81,60 @@ export function TransactionHistory({ walletId }: { walletId: string }) {
             {visible.map((tx, idx) => (
               <div
                 key={`${tx.hash}-${idx}`}
-                className="flex items-center gap-3 rounded-xl border border-card-border bg-card px-4 py-3"
+                className="flex items-center gap-3 rounded-xl border border-[#e2e2e2] bg-white px-4 py-3 transition-all hover:border-[#12ff8060] hover:shadow-sm"
               >
                 {/* Icon */}
                 <div className="shrink-0">
                   {tx.methodName ? (
-                    <Code className="h-4 w-4 text-blue-400" />
+                    <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-50">
+                      <Code className="h-4 w-4 text-blue-600" />
+                    </div>
                   ) : (
-                    <ArrowRightLeft className="h-4 w-4 text-accent" />
+                    <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#12ff8018]">
+                      <ArrowRightLeft className="h-4 w-4 text-[#121312]" />
+                    </div>
                   )}
                 </div>
 
                 {/* Main info */}
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
-                    <span className="text-sm font-medium">
+                    <span className="text-sm font-semibold text-[#121312]">
                       {methodLabel(tx.methodName)}
                     </span>
                     {tx.status ? (
-                      <CheckCircle2 className="h-3.5 w-3.5 text-accent" />
+                      <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />
                     ) : (
-                      <XCircle className="h-3.5 w-3.5 text-danger" />
+                      <XCircle className="h-3.5 w-3.5 text-red-400" />
                     )}
                   </div>
-                  <p className="text-xs text-muted truncate">
+                  <p className="text-xs text-[#636669] truncate">
                     <span className="font-mono">{truncate(tx.signer)}</span>
                     {" → "}
                     <span className="font-mono">{truncate(tx.receiver)}</span>
                   </p>
                 </div>
 
-                {/* Deposit amount */}
+                {/* Deposit */}
                 {tx.deposit && tx.deposit !== "0" && (
                   <div className="shrink-0 text-right">
-                    <span className="font-mono text-sm text-accent">
+                    <span className="font-mono text-sm font-semibold text-[#121312]">
                       {formatNear(String(tx.deposit))}
                     </span>
-                    <span className="text-xs text-muted ml-1">NEAR</span>
+                    <span className="text-xs text-[#636669] ml-1">NEAR</span>
                   </div>
                 )}
 
                 {/* Time + link */}
                 <div className="shrink-0 flex items-center gap-2">
-                  <span className="text-xs text-muted whitespace-nowrap">
+                  <span className="text-xs text-[#636669] whitespace-nowrap">
                     {timeAgo(tx.blockTimestamp)}
                   </span>
                   <a
                     href={tx.explorerUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-muted hover:text-foreground transition-colors"
+                    className="text-[#636669] hover:text-[#121312] transition-colors"
                   >
                     <ExternalLink className="h-3.5 w-3.5" />
                   </a>
@@ -144,7 +146,7 @@ export function TransactionHistory({ walletId }: { walletId: string }) {
           {txns.length > 5 && (
             <button
               onClick={() => setExpanded(!expanded)}
-              className="mt-3 flex w-full items-center justify-center gap-1.5 rounded-lg border border-card-border py-2 text-sm text-muted transition-colors hover:text-foreground hover:bg-card"
+              className="mt-3 flex w-full items-center justify-center gap-1.5 rounded-xl border border-[#e2e2e2] bg-white py-2.5 text-sm text-[#636669] transition-all hover:border-[#12ff8060] hover:text-[#121312]"
             >
               {expanded ? (
                 <>

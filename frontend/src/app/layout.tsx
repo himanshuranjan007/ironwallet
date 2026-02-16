@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { NearProvider } from "@/context/NearContext";
-import { Navbar } from "@/components/Navbar";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -15,9 +14,9 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Iron Wallet — Multisig Smart Wallet",
+  title: "Iron Wallet — Multisig Smart Wallet on NEAR",
   description:
-    "Create and manage multi-signature wallets on the NEAR blockchain. Secure your funds with multiple approvals.",
+    "Create and manage multi-signature wallets on the NEAR blockchain. The most trusted smart wallet infrastructure — modular, programmable and battle-tested.",
 };
 
 export default function RootLayout({
@@ -31,8 +30,7 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased font-sans`}
       >
         <NearProvider>
-          <Navbar />
-          <main className="min-h-[calc(100vh-4rem)]">{children}</main>
+          {children}
         </NearProvider>
       </body>
     </html>

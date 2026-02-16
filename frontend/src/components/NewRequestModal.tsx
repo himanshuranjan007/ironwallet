@@ -48,19 +48,12 @@ export function NewRequestModal({
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Transfer fields
   const [transferAmount, setTransferAmount] = useState("");
-
-  // FunctionCall fields
   const [methodName, setMethodName] = useState("");
   const [fnArgs, setFnArgs] = useState("{}");
   const [fnDeposit, setFnDeposit] = useState("0");
   const [fnGas, setFnGas] = useState("30");
-
-  // Member fields
   const [memberAccount, setMemberAccount] = useState("");
-
-  // Threshold field
   const [newThreshold, setNewThreshold] = useState(2);
 
   const buildAction = (): MultiSigAction => {
@@ -90,8 +83,8 @@ export function NewRequestModal({
 
     const effectiveReceiver =
       actionType === "AddMember" ||
-      actionType === "RemoveMember" ||
-      actionType === "ChangeNumConfirmations"
+        actionType === "RemoveMember" ||
+        actionType === "ChangeNumConfirmations"
         ? walletId
         : receiverId;
 
@@ -121,14 +114,17 @@ export function NewRequestModal({
     actionType === "RemoveMember" ||
     actionType === "ChangeNumConfirmations";
 
+  const inputClass =
+    "w-full rounded-xl border border-[#dcdee0] bg-white px-4 py-2.5 text-sm text-[#121312] placeholder:text-[#636669]/60";
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
-      <div className="mx-4 w-full max-w-lg rounded-2xl border border-card-border bg-card p-6">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/20 backdrop-blur-sm">
+      <div className="mx-4 w-full max-w-lg rounded-2xl border border-[#e2e2e2] bg-white p-6 shadow-xl">
         <div className="mb-6 flex items-center justify-between">
-          <h2 className="text-xl font-bold">New Request</h2>
+          <h2 className="text-xl font-bold text-[#121312]">New Transaction</h2>
           <button
             onClick={onClose}
-            className="rounded-lg p-1.5 text-muted transition-colors hover:bg-background hover:text-foreground"
+            className="rounded-xl p-1.5 text-[#636669] transition-colors hover:bg-[#f4f4f4] hover:text-[#121312]"
           >
             <X className="h-5 w-5" />
           </button>
@@ -137,7 +133,7 @@ export function NewRequestModal({
         <div className="space-y-4">
           {/* Action Type */}
           <div>
-            <label className="mb-1.5 block text-sm font-medium">
+            <label className="mb-1.5 block text-sm font-semibold text-[#121312]">
               Action Type
             </label>
             <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
@@ -145,11 +141,10 @@ export function NewRequestModal({
                 <button
                   key={opt.value}
                   onClick={() => setActionType(opt.value)}
-                  className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-xs font-medium transition-colors ${
-                    actionType === opt.value
-                      ? "border-accent bg-accent-dim text-accent"
-                      : "border-card-border text-muted hover:border-foreground/20"
-                  }`}
+                  className={`flex items-center gap-2 rounded-xl border px-3 py-2 text-xs font-medium transition-all ${actionType === opt.value
+                      ? "border-[#12ff8060] bg-[#12ff8018] text-[#121312]"
+                      : "border-[#e2e2e2] text-[#636669] hover:border-[#12ff8040] hover:text-[#121312]"
+                    }`}
                 >
                   <opt.icon className="h-3.5 w-3.5" />
                   {opt.label}
@@ -160,7 +155,7 @@ export function NewRequestModal({
 
           {/* Description */}
           <div>
-            <label className="mb-1.5 block text-sm font-medium">
+            <label className="mb-1.5 block text-sm font-semibold text-[#121312]">
               Description
             </label>
             <input
@@ -168,14 +163,14 @@ export function NewRequestModal({
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               placeholder="What is this request for?"
-              className="w-full rounded-lg border border-card-border bg-background px-4 py-2.5 text-sm outline-none transition-colors focus:border-accent"
+              className={inputClass}
             />
           </div>
 
-          {/* Receiver (only for Transfer / FunctionCall) */}
+          {/* Receiver */}
           {!isManagementAction && (
             <div>
-              <label className="mb-1.5 block text-sm font-medium">
+              <label className="mb-1.5 block text-sm font-semibold text-[#121312]">
                 Receiver Account
               </label>
               <input
@@ -183,15 +178,15 @@ export function NewRequestModal({
                 value={receiverId}
                 onChange={(e) => setReceiverId(e.target.value)}
                 placeholder="recipient.testnet"
-                className="w-full rounded-lg border border-card-border bg-background px-4 py-2.5 text-sm outline-none transition-colors focus:border-accent"
+                className={inputClass}
               />
             </div>
           )}
 
-          {/* Action-specific fields */}
+          {/* Transfer fields */}
           {actionType === "Transfer" && (
             <div>
-              <label className="mb-1.5 block text-sm font-medium">
+              <label className="mb-1.5 block text-sm font-semibold text-[#121312]">
                 Amount (NEAR)
               </label>
               <input
@@ -200,99 +195,54 @@ export function NewRequestModal({
                 onChange={(e) => setTransferAmount(e.target.value)}
                 placeholder="0.0"
                 step="0.01"
-                className="w-full rounded-lg border border-card-border bg-background px-4 py-2.5 text-sm outline-none transition-colors focus:border-accent"
+                className={inputClass}
               />
             </div>
           )}
 
+          {/* FunctionCall fields */}
           {actionType === "FunctionCall" && (
             <>
               <div>
-                <label className="mb-1.5 block text-sm font-medium">
-                  Method Name
-                </label>
-                <input
-                  type="text"
-                  value={methodName}
-                  onChange={(e) => setMethodName(e.target.value)}
-                  placeholder="method_name"
-                  className="w-full rounded-lg border border-card-border bg-background px-4 py-2.5 text-sm font-mono outline-none transition-colors focus:border-accent"
-                />
+                <label className="mb-1.5 block text-sm font-semibold text-[#121312]">Method Name</label>
+                <input type="text" value={methodName} onChange={(e) => setMethodName(e.target.value)} placeholder="method_name" className={`${inputClass} font-mono`} />
               </div>
               <div>
-                <label className="mb-1.5 block text-sm font-medium">
-                  Arguments (JSON)
-                </label>
-                <textarea
-                  value={fnArgs}
-                  onChange={(e) => setFnArgs(e.target.value)}
-                  rows={3}
-                  className="w-full rounded-lg border border-card-border bg-background px-4 py-2.5 text-sm font-mono outline-none transition-colors focus:border-accent"
-                />
+                <label className="mb-1.5 block text-sm font-semibold text-[#121312]">Arguments (JSON)</label>
+                <textarea value={fnArgs} onChange={(e) => setFnArgs(e.target.value)} rows={3} className={`${inputClass} font-mono`} />
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="mb-1.5 block text-sm font-medium">
-                    Deposit (NEAR)
-                  </label>
-                  <input
-                    type="number"
-                    value={fnDeposit}
-                    onChange={(e) => setFnDeposit(e.target.value)}
-                    step="0.01"
-                    className="w-full rounded-lg border border-card-border bg-background px-4 py-2.5 text-sm outline-none transition-colors focus:border-accent"
-                  />
+                  <label className="mb-1.5 block text-sm font-semibold text-[#121312]">Deposit (NEAR)</label>
+                  <input type="number" value={fnDeposit} onChange={(e) => setFnDeposit(e.target.value)} step="0.01" className={inputClass} />
                 </div>
                 <div>
-                  <label className="mb-1.5 block text-sm font-medium">
-                    Gas (TGas)
-                  </label>
-                  <input
-                    type="number"
-                    value={fnGas}
-                    onChange={(e) => setFnGas(e.target.value)}
-                    className="w-full rounded-lg border border-card-border bg-background px-4 py-2.5 text-sm outline-none transition-colors focus:border-accent"
-                  />
+                  <label className="mb-1.5 block text-sm font-semibold text-[#121312]">Gas (TGas)</label>
+                  <input type="number" value={fnGas} onChange={(e) => setFnGas(e.target.value)} className={inputClass} />
                 </div>
               </div>
             </>
           )}
 
+          {/* Member fields */}
           {(actionType === "AddMember" || actionType === "RemoveMember") && (
             <div>
-              <label className="mb-1.5 block text-sm font-medium">
-                Member Account
-              </label>
-              <input
-                type="text"
-                value={memberAccount}
-                onChange={(e) => setMemberAccount(e.target.value)}
-                placeholder="member.testnet"
-                className="w-full rounded-lg border border-card-border bg-background px-4 py-2.5 text-sm outline-none transition-colors focus:border-accent"
-              />
+              <label className="mb-1.5 block text-sm font-semibold text-[#121312]">Member Account</label>
+              <input type="text" value={memberAccount} onChange={(e) => setMemberAccount(e.target.value)} placeholder="member.testnet" className={inputClass} />
             </div>
           )}
 
+          {/* Threshold field */}
           {actionType === "ChangeNumConfirmations" && (
             <div>
-              <label className="mb-1.5 block text-sm font-medium">
-                New Required Confirmations
-              </label>
-              <input
-                type="number"
-                value={newThreshold}
-                onChange={(e) =>
-                  setNewThreshold(Math.max(1, parseInt(e.target.value) || 1))
-                }
-                min={1}
-                className="w-full rounded-lg border border-card-border bg-background px-4 py-2.5 text-sm outline-none transition-colors focus:border-accent"
-              />
+              <label className="mb-1.5 block text-sm font-semibold text-[#121312]">New Required Confirmations</label>
+              <input type="number" value={newThreshold} onChange={(e) => setNewThreshold(Math.max(1, parseInt(e.target.value) || 1))} min={1} className={inputClass} />
             </div>
           )}
 
           {/* Error */}
           {error && (
-            <div className="flex items-start gap-2 rounded-lg bg-danger-dim p-3 text-sm text-danger">
+            <div className="flex items-start gap-2 rounded-xl bg-red-50 border border-red-200 p-3 text-sm text-red-600">
               <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
               {error}
             </div>
@@ -302,7 +252,7 @@ export function NewRequestModal({
           <button
             onClick={handleSubmit}
             disabled={submitting}
-            className="flex w-full items-center justify-center gap-2 rounded-xl bg-accent py-3 font-semibold text-black transition-opacity hover:opacity-90 disabled:opacity-50"
+            className="flex w-full items-center justify-center gap-2 rounded-full bg-[#12ff80] py-3 font-semibold text-[#121312] shadow-lg shadow-[#12ff8030] transition-all hover:bg-[#0ee872] hover:shadow-xl hover:shadow-[#12ff8040] disabled:opacity-50"
           >
             {submitting ? (
               <>
