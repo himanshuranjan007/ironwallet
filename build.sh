@@ -1,0 +1,17 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+echo "==> Building smart contract..."
+cd contracts/multisig
+cargo build --target wasm32-unknown-unknown --release
+cd ../..
+
+echo "==> Copying WASM to frontend..."
+cp contracts/multisig/target/wasm32-unknown-unknown/release/multisig.wasm frontend/public/multisig.wasm
+
+echo "==> Building frontend..."
+cd frontend
+bun install
+bun run build
+
+echo "==> Done! All builds succeeded."

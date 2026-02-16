@@ -1,0 +1,31 @@
+# ── Dependencies ──────────────────────────────────────────────────────────────
+node_modules/
+
+# ── Rust / Contract ──────────────────────────────────────────────────────────
+contracts/*/target/
+
+# ── Next.js ──────────────────────────────────────────────────────────────────
+frontend/.next/
+frontend/out/
+frontend/build/
+
+# ── Environment ──────────────────────────────────────────────────────────────
+.env
+.env.*
+!.env.example
+
+# ── OS / Editor ──────────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+.idea/
+.vscode/
+
+# ── Misc ─────────────────────────────────────────────────────────────────────
+*.pem
+*.tsbuildinfo
+npm-debug.log*
+yarn-debug.log*
+.pnpm-debug.log*
+.vercel
