@@ -1,0 +1,16 @@
+{
+    "name": "Iron{Wallet}",
+    "short_name": "IronWallet",
+    "description": "Multisig Smart Wallet on NEAR Protocol",
+    "start_url": "/",
+    "display": "standalone",
+    "background_color": "#fafafa",
+    "theme_color": "#12ff80",
+    "icons": [
+        {
+            "src": "/logo.png",
+            "sizes": "512x512",
+            "type": "image/png"
+        }
+    ]
+}

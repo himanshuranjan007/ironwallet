@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { useNear } from "@/context/NearContext";
 import {
@@ -27,9 +28,13 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
     if (!isSignedIn) {
         return (
             <div className="flex min-h-screen flex-col items-center justify-center bg-[#fafafa] px-4">
-                <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-[#121312]">
-                    <Shield className="h-7 w-7 text-[#12ff80]" />
-                </div>
+                <Image
+                    src="/logo.png"
+                    alt="Iron Wallet"
+                    width={56}
+                    height={56}
+                    className="rounded-2xl"
+                />
                 <h2 className="mt-5 text-xl font-bold text-[#121312]">
                     Connect your wallet
                 </h2>
@@ -65,9 +70,13 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
                 {/* Logo */}
                 <div className="flex h-16 items-center gap-2.5 border-b border-[#e8e8e8] px-5">
                     <Link href="/" className="flex items-center gap-2.5">
-                        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#121312]">
-                            <Shield className="h-4 w-4 text-[#12ff80]" />
-                        </div>
+                        <Image
+                            src="/logo.png"
+                            alt="Iron Wallet"
+                            width={32}
+                            height={32}
+                            className="rounded-lg"
+                        />
                         <span className="text-base font-bold text-[#121312] tracking-tight">
                             Iron{" "}
                             <span className="font-normal text-[#636669]">{"{Wallet}"}</span>
@@ -113,8 +122,8 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
                                     href={item.href}
                                     onClick={() => setMobileOpen(false)}
                                     className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors ${isActive
-                                            ? "bg-[#12ff8018] text-[#121312]"
-                                            : "text-[#636669] hover:bg-[#f4f4f4] hover:text-[#121312]"
+                                        ? "bg-[#12ff8018] text-[#121312]"
+                                        : "text-[#636669] hover:bg-[#f4f4f4] hover:text-[#121312]"
                                         }`}
                                 >
                                     <item.icon className={`h-[18px] w-[18px] ${isActive ? "text-[#121312]" : ""}`} />
@@ -164,9 +173,13 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
                         <Menu className="h-5 w-5" />
                     </button>
                     <Link href="/" className="flex items-center gap-2">
-                        <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-[#121312]">
-                            <Shield className="h-3.5 w-3.5 text-[#12ff80]" />
-                        </div>
+                        <Image
+                            src="/logo.png"
+                            alt="Iron Wallet"
+                            width={28}
+                            height={28}
+                            className="rounded-lg"
+                        />
                         <span className="text-sm font-bold text-[#121312]">
                             Iron <span className="font-normal text-[#636669]">{"{Wallet}"}</span>
                         </span>

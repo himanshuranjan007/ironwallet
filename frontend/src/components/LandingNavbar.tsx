@@ -1,8 +1,9 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { useNear } from "@/context/NearContext";
-import { Shield, ChevronRight } from "lucide-react";
+import { ChevronRight } from "lucide-react";
 
 const navLinks = [
   { label: "Features", href: "#features" },
@@ -18,9 +19,13 @@ export function LandingNavbar() {
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-6">
         {/* Logo */}
         <Link href="/" className="flex items-center gap-2.5">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#121312]">
-            <Shield className="h-4.5 w-4.5 text-[#12ff80]" />
-          </div>
+          <Image
+            src="/logo.png"
+            alt="Iron Wallet"
+            width={32}
+            height={32}
+            className="rounded-lg"
+          />
           <span className="text-lg font-bold tracking-tight text-[#121312]">
             Iron{" "}
             <span className="font-normal text-[#636669]">{"{Wallet}"}</span>

@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { useNear } from "@/context/NearContext";
 import { LandingNavbar } from "@/components/LandingNavbar";
 import { DashboardMockup } from "@/components/DashboardMockup";
@@ -267,9 +268,13 @@ export default function Home() {
       <footer className="border-t border-[#e8e8e8] bg-[#fafafa] py-12">
         <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-6 px-6 sm:flex-row">
           <div className="flex items-center gap-2">
-            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-[#121312]">
-              <Shield className="h-3.5 w-3.5 text-[#12ff80]" />
-            </div>
+            <Image
+              src="/logo.png"
+              alt="Iron Wallet"
+              width={28}
+              height={28}
+              className="rounded-md"
+            />
             <span className="text-sm font-bold text-[#121312]">
               Iron{" "}
               <span className="font-normal text-[#636669]">{"{Wallet}"}</span>
