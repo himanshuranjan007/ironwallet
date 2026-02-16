@@ -1,14 +1,14 @@
 import { Account } from "@near-js/accounts";
 import { JsonRpcProvider } from "@near-js/providers";
-import { InMemoryKeyStore } from "@near-js/keystores";
 import { KeyPair } from "@near-js/crypto";
 import { KeyPairSigner } from "@near-js/signers";
+import { actionCreators } from "@near-js/transactions";
 import { readFileSync } from "fs";
 import { join, dirname } from "path";
 import { fileURLToPath } from "url";
 import crypto from "crypto";
 import nacl from "tweetnacl";
-import { baseEncode, formatNearAmount } from "near-api-js";
+import { baseEncode } from "near-api-js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(__dirname, "..");
@@ -22,15 +22,11 @@ if (!SEED_PHRASE) {
   process.exit(1);
 }
 
-// ── SLIP-0010 key derivation (NEAR standard: m/44'/397'/0') ──────────────────
-
 function mnemonicToSeed(mnemonic) {
   return crypto.pbkdf2Sync(
     Buffer.from(mnemonic.normalize("NFKD"), "utf8"),
     Buffer.from("mnemonic", "utf8"),
-    2048,
-    64,
-    "sha512"
+    2048, 64, "sha512"
   );
 }
 
@@ -38,21 +34,17 @@ function slip10Derive(seed, path) {
   let hmac = crypto.createHmac("sha512", "ed25519 seed").update(seed).digest();
   let key = hmac.slice(0, 32);
   let chainCode = hmac.slice(32);
-
   for (const idx of path) {
-    const index = 0x80000000 + idx;
     const data = Buffer.alloc(37);
     data[0] = 0;
     key.copy(data, 1);
-    data.writeUInt32BE(index, 33);
+    data.writeUInt32BE(0x80000000 + idx, 33);
     hmac = crypto.createHmac("sha512", chainCode).update(data).digest();
     key = hmac.slice(0, 32);
     chainCode = hmac.slice(32);
   }
   return key;
 }
-
-// ── Main ─────────────────────────────────────────────────────────────────────
 
 async function main() {
   console.log("==> Deriving key from seed phrase...");
@@ -63,74 +55,74 @@ async function main() {
   const publicKeyB58 = baseEncode(keyPairRaw.publicKey);
   console.log(`   Public key: ed25519:${publicKeyB58}`);
 
-  // Set up provider and signer
   const provider = new JsonRpcProvider({ url: RPC_URL });
   const keyPair = KeyPair.fromString(`ed25519:${secretKeyB58}`);
   const signer = new KeyPairSigner(keyPair);
   const account = new Account(FACTORY_ACCOUNT, provider, signer);
 
-  // Verify account access
-  console.log("==> Verifying account access...");
-  const state = await provider.query({
-    request_type: "view_account",
-    account_id: FACTORY_ACCOUNT,
-    finality: "final",
-  });
-  console.log(`   Balance: ${formatNearAmount(state.amount, 4)} NEAR`);
-
-  // Step 1: Deploy factory contract
+  // Step 1: Deploy factory + init in one transaction
   console.log("\n==> Deploying factory contract...");
   const factoryWasm = readFileSync(
     join(ROOT, "contracts/factory/target/wasm32-unknown-unknown/release/iron_wallet_factory.wasm")
   );
   console.log(`   Factory WASM: ${(factoryWasm.length / 1024).toFixed(1)} KB`);
 
-  const deployResult = await account.deployContract(new Uint8Array(factoryWasm));
-  console.log(`   ✅ Deployed! TX: ${deployResult.transaction.hash}`);
-
-  // Step 2: Initialize factory
-  console.log("\n==> Initializing factory...");
-  const initResult = await account.functionCall({
-    contractId: FACTORY_ACCOUNT,
-    methodName: "new",
-    args: {},
-    gas: BigInt("100000000000000"),
+  const deployResult = await account.signAndSendTransaction({
+    receiverId: FACTORY_ACCOUNT,
+    actions: [
+      actionCreators.deployContract(new Uint8Array(factoryWasm)),
+      actionCreators.functionCall("new", new Uint8Array(Buffer.from("{}")), BigInt("50000000000000"), BigInt(0)),
+    ],
   });
-  console.log(`   ✅ Initialized! TX: ${initResult.transaction.hash}`);
+  console.log(`   ✅ Deploy + Init TX: ${deployResult.transaction.hash}`);
 
-  // Step 3: Store multisig WASM
+  // Step 2: Store multisig WASM
   console.log("\n==> Storing multisig contract code in factory...");
   const multisigWasm = readFileSync(
     join(ROOT, "contracts/multisig/target/wasm32-unknown-unknown/release/multisig.wasm")
   );
   console.log(`   Multisig WASM: ${(multisigWasm.length / 1024).toFixed(1)} KB`);
 
-  const storeResult = await account.functionCall({
-    contractId: FACTORY_ACCOUNT,
-    methodName: "store_contract",
-    args: new Uint8Array(multisigWasm),
-    gas: BigInt("300000000000000"),
+  const storeResult = await account.signAndSendTransaction({
+    receiverId: FACTORY_ACCOUNT,
+    actions: [
+      actionCreators.functionCall("store_contract", new Uint8Array(multisigWasm), BigInt("300000000000000"), BigInt(0)),
+    ],
   });
-  console.log(`   ✅ Stored! TX: ${storeResult.transaction.hash}`);
+  console.log(`   ✅ Store TX: ${storeResult.transaction.hash}`);
 
-  // Step 4: Verify
+  // Step 3: Verify
   console.log("\n==> Verifying...");
-  const hasCode = await provider.query({
+  await new Promise(r => setTimeout(r, 2000));
+
+  const hasCodeRes = await provider.query({
     request_type: "call_function",
     account_id: FACTORY_ACCOUNT,
     method_name: "has_code",
     args_base64: btoa("{}"),
     finality: "final",
   });
-  const result = JSON.parse(Buffer.from(hasCode.result).toString());
-  console.log(`   has_code: ${result}`);
+  const hasCode = JSON.parse(Buffer.from(hasCodeRes.result).toString());
+
+  const ownerRes = await provider.query({
+    request_type: "call_function",
+    account_id: FACTORY_ACCOUNT,
+    method_name: "get_owner",
+    args_base64: btoa("{}"),
+    finality: "final",
+  });
+  const owner = JSON.parse(Buffer.from(ownerRes.result).toString());
+
+  console.log(`   has_code: ${hasCode}`);
+  console.log(`   owner: ${owner}`);
 
   console.log(`
 ══════════════════════════════════════════════════════════════
-  ✅ Factory deployed successfully!
+  ✅ Iron Wallet Factory deployed successfully!
 
-  Factory account:  ${FACTORY_ACCOUNT}
-  Config is already set in frontend/src/config/near.ts
+  Factory:  ${FACTORY_ACCOUNT}
+  Owner:    ${owner}
+  Code:     ${hasCode ? "stored" : "NOT stored"}
 
   Run:  cd frontend && bun dev
 ══════════════════════════════════════════════════════════════
@@ -139,9 +131,5 @@ async function main() {
 
 main().catch((err) => {
   console.error("\n❌ Deployment failed:", err.message || err);
-  if (err.message?.includes("does not exist")) {
-    console.error("\nThe derived key doesn't match the account's access keys.");
-    console.error("Try logging in via: near login");
-  }
   process.exit(1);
 });

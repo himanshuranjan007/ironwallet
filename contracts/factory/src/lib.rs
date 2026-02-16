@@ -1,17 +1,9 @@
-use near_sdk::borsh::BorshSerialize;
-use near_sdk::collections::LazyOption;
-use near_sdk::{env, near, AccountId, BorshStorageKey, Gas, NearToken, Promise, require};
-
-#[derive(BorshStorageKey, BorshSerialize)]
-#[borsh(crate = "near_sdk::borsh")]
-enum StorageKey {
-    Code,
-}
+use near_sdk::{env, near, AccountId, Gas, NearToken, Promise, require};
 
 #[near(contract_state)]
 pub struct WalletFactory {
     owner: AccountId,
-    code: LazyOption<Vec<u8>>,
+    code: Vec<u8>,
     wallet_count: u64,
 }
 
@@ -19,7 +11,7 @@ impl Default for WalletFactory {
     fn default() -> Self {
         Self {
             owner: env::predecessor_account_id(),
-            code: LazyOption::new(StorageKey::Code, None),
+            code: Vec::new(),
             wallet_count: 0,
         }
     }
@@ -32,27 +24,24 @@ impl WalletFactory {
         require!(!env::state_exists(), "Already initialized");
         Self {
             owner: env::predecessor_account_id(),
-            code: LazyOption::new(StorageKey::Code, None),
+            code: Vec::new(),
             wallet_count: 0,
         }
     }
 
     /// Store the multisig WASM binary. Only the factory owner can call this.
-    /// The WASM bytes are passed as raw input data (not JSON).
-    /// Call with: near call <factory> store_contract --base64File multisig.wasm
+    /// The WASM bytes are passed as raw input data.
     pub fn store_contract(&mut self) {
         require!(
             env::predecessor_account_id() == self.owner,
             "Only the owner can store contract code"
         );
         let input = env::input().expect("No input provided");
-        self.code.set(&input);
-        env::log_str(&format!("Stored contract code: {} bytes", input.len()));
+        self.code = input;
+        env::log_str(&format!("Stored {} bytes of contract code", self.code.len()));
     }
 
     /// Create a new multisig wallet as a sub-account of this factory.
-    /// Caller must attach enough NEAR for account creation + storage (~2 NEAR).
-    /// The wallet will be: `<name>.<factory_account_id>`
     #[payable]
     pub fn create(
         &mut self,
@@ -60,7 +49,7 @@ impl WalletFactory {
         members: Vec<AccountId>,
         num_confirmations: u32,
     ) -> Promise {
-        let code = self.code.get().expect("Contract code not stored yet");
+        require!(!self.code.is_empty(), "Contract code not stored yet");
         require!(!name.is_empty(), "Name cannot be empty");
         require!(!members.is_empty(), "Must have at least one member");
         require!(
@@ -83,18 +72,10 @@ impl WalletFactory {
 
         self.wallet_count += 1;
 
-        env::log_str(&format!(
-            "Creating wallet {} (#{}) with {} members, {} confirmations required",
-            subaccount,
-            self.wallet_count,
-            members.len(),
-            num_confirmations,
-        ));
-
         Promise::new(subaccount)
             .create_account()
             .transfer(env::attached_deposit())
-            .deploy_contract(code)
+            .deploy_contract(self.code.clone())
             .function_call(
                 "new".to_string(),
                 init_args.into_bytes(),
@@ -103,10 +84,8 @@ impl WalletFactory {
             )
     }
 
-    // ── View methods ─────────────────────────────────────────────────────────
-
     pub fn has_code(&self) -> bool {
-        self.code.get().is_some()
+        !self.code.is_empty()
     }
 
     pub fn get_owner(&self) -> AccountId {
