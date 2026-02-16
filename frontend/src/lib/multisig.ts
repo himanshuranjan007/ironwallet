@@ -1,7 +1,7 @@
 import { JsonRpcProvider } from "@near-js/providers";
 import { actionCreators } from "@near-js/transactions";
 import type { WalletSelector } from "@near-wallet-selector/core";
-import { getConfig } from "@/config/near";
+import { getConfig, FACTORY_CONTRACT_ID } from "@/config/near";
 import type {
   MultiSigRequestInput,
   MultiSigRequestView,
@@ -11,8 +11,7 @@ import type {
 const config = getConfig();
 const provider = new JsonRpcProvider({ url: config.nodeUrl });
 
-const { createAccount, transfer, deployContract, functionCall } =
-  actionCreators;
+const { functionCall } = actionCreators;
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -90,9 +89,23 @@ export async function getAccountBalance(
   return (account as unknown as { amount: string }).amount;
 }
 
+export async function accountExists(accountId: string): Promise<boolean> {
+  try {
+    await provider.query({
+      request_type: "view_account",
+      account_id: accountId,
+      finality: "final",
+    });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 // ── Constants ────────────────────────────────────────────────────────────────
 
 const GAS_100T = BigInt("100000000000000");
+const GAS_300T = BigInt("300000000000000");
 
 // ── Change calls (wallet required) ──────────────────────────────────────────
 
@@ -167,32 +180,32 @@ export async function deleteRequest(
   });
 }
 
-// ── Deploy a new multisig wallet ─────────────────────────────────────────────
+// ── Create wallet via factory ────────────────────────────────────────────────
 
-export async function deployMultisigWallet(
+export async function createWalletViaFactory(
   selector: WalletSelector,
-  newAccountId: string,
+  name: string,
   members: string[],
   numConfirmations: number,
-  wasmBytes: Uint8Array,
-  initialBalance: string
+  depositYocto: string
 ) {
   const wallet = await selector.wallet();
 
   return wallet.signAndSendTransaction({
-    receiverId: newAccountId,
+    receiverId: FACTORY_CONTRACT_ID,
     actions: [
-      createAccount(),
-      transfer(BigInt(initialBalance)),
-      deployContract(wasmBytes),
       functionCall(
-        "new",
-        { members, num_confirmations: numConfirmations },
-        GAS_100T,
-        BigInt(0)
+        "create",
+        { name, members, num_confirmations: numConfirmations },
+        GAS_300T,
+        BigInt(depositYocto)
       ),
     ],
   });
+}
+
+export function getWalletAccountId(name: string): string {
+  return `${name}.${FACTORY_CONTRACT_ID}`;
 }
 
 // ── Utility ──────────────────────────────────────────────────────────────────

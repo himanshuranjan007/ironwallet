@@ -7,8 +7,8 @@ on:
     branches: [main]
 
 jobs:
-  contract:
-    name: Build Smart Contract
+  contracts:
+    name: Build Smart Contracts
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -25,22 +25,29 @@ jobs:
             ~/.cargo/registry
             ~/.cargo/git
             contracts/multisig/target
-          key: ${{ runner.os }}-cargo-${{ hashFiles('contracts/multisig/Cargo.lock') }}
+            contracts/factory/target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('contracts/*/Cargo.lock') }}
 
-      - name: Build contract
+      - name: Build multisig contract
         working-directory: contracts/multisig
         run: cargo build --target wasm32-unknown-unknown --release
 
-      - name: Upload WASM artifact
+      - name: Build factory contract
+        working-directory: contracts/factory
+        run: cargo build --target wasm32-unknown-unknown --release
+
+      - name: Upload WASM artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: multisig-wasm
-          path: contracts/multisig/target/wasm32-unknown-unknown/release/multisig.wasm
+          name: contracts-wasm
+          path: |
+            contracts/multisig/target/wasm32-unknown-unknown/release/multisig.wasm
+            contracts/factory/target/wasm32-unknown-unknown/release/iron_wallet_factory.wasm
 
   frontend:
     name: Build Frontend
     runs-on: ubuntu-latest
-    needs: contract
+    needs: contracts
     steps:
       - uses: actions/checkout@v4
 
@@ -49,11 +56,15 @@ jobs:
         with:
           bun-version: latest
 
-      - name: Download WASM artifact
+      - name: Download WASM artifacts
         uses: actions/download-artifact@v4
         with:
-          name: multisig-wasm
-          path: frontend/public
+          name: contracts-wasm
+          path: artifacts
+
+      - name: Copy multisig WASM to frontend
+        run: |
+          cp artifacts/contracts/multisig/target/wasm32-unknown-unknown/release/multisig.wasm frontend/public/multisig.wasm
 
       - name: Install dependencies
         working-directory: frontend

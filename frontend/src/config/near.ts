@@ -1,5 +1,9 @@
 export const NETWORK_ID = "testnet";
 
+// The factory contract that deploys multisig wallets as sub-accounts.
+// Deploy your own factory using: ./scripts/deploy-factory.sh <account-id>
+export const FACTORY_CONTRACT_ID = "iron-wallet.testnet";
+
 export const NEAR_CONFIG = {
   testnet: {
     networkId: "testnet",
