@@ -40,7 +40,7 @@ export const metadata: Metadata = {
     locale: "en_US",
     url: "https://ironwallet.near.page",
     siteName: "Iron{Wallet}",
-    title: "Iron{Wallet} — Multisig Smart Wallet on NEAR",
+    title: "Iron{Wallet} - Multisig Smart Wallet on NEAR",
     description:
       "Create and manage multi-signature wallets on NEAR Protocol. Modular, programmable and battle-tested.",
     images: [
