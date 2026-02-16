@@ -125,7 +125,7 @@ export async function addRequest(
   return wallet.signAndSendTransaction({
     receiverId: contractId,
     actions: [
-      functionCall("add_request", request, GAS_100T, BigInt(0)),
+      functionCall("add_request", { request }, GAS_100T, BigInt(0)),
     ],
   });
 }

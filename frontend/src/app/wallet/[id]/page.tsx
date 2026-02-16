@@ -240,7 +240,7 @@ export default function WalletPage() {
         </h2>
         <div className="flex gap-3">
           <button
-            onClick={fetchData}
+            onClick={() => fetchData()}
             className="rounded-lg border border-card-border p-2.5 text-muted transition-colors hover:bg-card hover:text-foreground"
           >
             <RefreshCw className="h-4 w-4" />
