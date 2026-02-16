@@ -16,6 +16,7 @@ import {
 interface RequestCardProps {
   request: MultiSigRequestView;
   currentAccount: string | null;
+  isMember?: boolean;
   onConfirm: () => void;
   onRevoke: () => void;
   onDelete: () => void;
@@ -68,6 +69,7 @@ function ActionBadge({ action }: { action: MultiSigRequestView["actions"][0] }) 
 export function RequestCard({
   request,
   currentAccount,
+  isMember = true,
   onConfirm,
   onRevoke,
   onDelete,

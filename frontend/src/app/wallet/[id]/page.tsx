@@ -18,6 +18,7 @@ import { addStoredWallet } from "@/lib/storage";
 import type { WalletInfo, MultiSigRequestView } from "@/types";
 import { RequestCard } from "@/components/RequestCard";
 import { NewRequestModal } from "@/components/NewRequestModal";
+import { TransactionHistory } from "@/components/TransactionHistory";
 import {
   Shield,
   Users,
@@ -328,6 +329,11 @@ export default function WalletPage() {
           ))}
         </div>
       )}
+
+      {/* Transaction History */}
+      <div className="mt-10">
+        <TransactionHistory walletId={walletId} />
+      </div>
 
       {/* New Request Modal */}
       {showNewRequest && (
