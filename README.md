@@ -1,4 +1,4 @@
-# NearVault — Multisig Smart Wallet on NEAR
+# Iron Wallet — Multisig Smart Wallet on NEAR
 
 A multi-signature smart wallet built on the NEAR blockchain. Users can create shared wallets that require multiple approvals before any transaction is executed.
 

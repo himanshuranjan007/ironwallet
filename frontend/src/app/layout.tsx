@@ -15,7 +15,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "NearVault — Multisig Smart Wallet",
+  title: "Iron Wallet — Multisig Smart Wallet",
   description:
     "Create and manage multi-signature wallets on the NEAR blockchain. Secure your funds with multiple approvals.",
 };
