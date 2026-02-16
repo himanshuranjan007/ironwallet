@@ -1,22 +1,23 @@
-import { JsonRpcProvider } from "@near-js/providers";
 import { actionCreators } from "@near-js/transactions";
 import type { WalletSelector } from "@near-wallet-selector/core";
-import { getConfig, FACTORY_CONTRACT_ID } from "@/config/near";
+import { FACTORY_CONTRACT_ID, NETWORK_ID } from "@/config/near";
 import type {
   MultiSigRequestInput,
   MultiSigRequestView,
   WalletInfo,
 } from "@/types";
 
-const config = getConfig();
-const provider = new JsonRpcProvider({ url: config.nodeUrl });
+const RPC_URL =
+  NETWORK_ID === "testnet"
+    ? "https://test.rpc.fastnear.com"
+    : "https://free.rpc.fastnear.com";
 
 const { functionCall } = actionCreators;
 
-// ── Simple in-memory cache ──────────────────────────────────────────────────
+// ── Simple cache ────────────────────────────────────────────────────────────
 
 const cache = new Map<string, { data: unknown; ts: number }>();
-const CACHE_TTL = 10_000; // 10 seconds
+const CACHE_TTL = 10_000;
 
 function getCached<T>(key: string): T | null {
   const entry = cache.get(key);
@@ -38,21 +39,34 @@ export function invalidateCache(prefix?: string) {
   }
 }
 
+// ── RPC helper ──────────────────────────────────────────────────────────────
+
+let rpcId = 0;
+
+async function rpcCall(method: string, params: unknown): Promise<unknown> {
+  const res = await fetch(RPC_URL, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ jsonrpc: "2.0", id: ++rpcId, method, params }),
+  });
+  const json = await res.json();
+  if (json.error) throw new Error(JSON.stringify(json.error));
+  return json.result;
+}
+
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
 function encodeArgs(args: Record<string, unknown>): string {
-  const json = JSON.stringify(args);
-  if (typeof btoa === "function") return btoa(json);
-  return Buffer.from(json).toString("base64");
+  if (typeof btoa === "function") return btoa(JSON.stringify(args));
+  return Buffer.from(JSON.stringify(args)).toString("base64");
 }
 
-function decodeResult(result: unknown): unknown {
-  const res = result as { result: number[] };
-  const bytes = new Uint8Array(res.result);
-  return JSON.parse(new TextDecoder().decode(bytes));
+function decodeViewResult(res: unknown): unknown {
+  const r = res as { result: number[] };
+  return JSON.parse(new TextDecoder().decode(new Uint8Array(r.result)));
 }
 
-// ── View calls (optimistic finality for speed) ──────────────────────────────
+// ── View calls ──────────────────────────────────────────────────────────────
 
 export async function viewMethod(
   contractId: string,
@@ -63,14 +77,14 @@ export async function viewMethod(
   const cached = getCached(cacheKey);
   if (cached !== null) return cached;
 
-  const res = await provider.query({
+  const res = await rpcCall("query", {
     request_type: "call_function",
     account_id: contractId,
     method_name: methodName,
     args_base64: encodeArgs(args),
     finality: "optimistic",
   });
-  const data = decodeResult(res);
+  const data = decodeViewResult(res);
   setCache(cacheKey, data);
   return data;
 }
@@ -88,10 +102,7 @@ export async function getMembers(contractId: string): Promise<string[]> {
 export async function getRequests(
   contractId: string
 ): Promise<MultiSigRequestView[]> {
-  return (await viewMethod(
-    contractId,
-    "get_requests"
-  )) as MultiSigRequestView[];
+  return (await viewMethod(contractId, "get_requests")) as MultiSigRequestView[];
 }
 
 export async function getRequest(
@@ -106,10 +117,7 @@ export async function getRequest(
 export async function getNumConfirmations(
   contractId: string
 ): Promise<number> {
-  return (await viewMethod(
-    contractId,
-    "get_num_confirmations"
-  )) as number;
+  return (await viewMethod(contractId, "get_num_confirmations")) as number;
 }
 
 export async function getAccountBalance(
@@ -119,19 +127,19 @@ export async function getAccountBalance(
   const cached = getCached<string>(cacheKey);
   if (cached !== null) return cached;
 
-  const account = await provider.query({
+  const res = await rpcCall("query", {
     request_type: "view_account",
     account_id: accountId,
     finality: "optimistic",
   });
-  const amount = (account as unknown as { amount: string }).amount;
+  const amount = (res as { amount: string }).amount;
   setCache(cacheKey, amount);
   return amount;
 }
 
 export async function accountExists(accountId: string): Promise<boolean> {
   try {
-    await provider.query({
+    await rpcCall("query", {
       request_type: "view_account",
       account_id: accountId,
       finality: "optimistic",
@@ -155,7 +163,7 @@ export async function addRequest(
   request: MultiSigRequestInput
 ) {
   const wallet = await selector.wallet();
-  invalidateCache(contractId);
+  invalidateCache();
   return wallet.signAndSendTransaction({
     receiverId: contractId,
     actions: [
@@ -170,16 +178,11 @@ export async function confirmRequest(
   requestId: number
 ) {
   const wallet = await selector.wallet();
-  invalidateCache(contractId);
+  invalidateCache();
   return wallet.signAndSendTransaction({
     receiverId: contractId,
     actions: [
-      functionCall(
-        "confirm",
-        { request_id: requestId },
-        GAS_100T,
-        BigInt(0)
-      ),
+      functionCall("confirm", { request_id: requestId }, GAS_100T, BigInt(0)),
     ],
   });
 }
@@ -190,16 +193,11 @@ export async function revokeConfirmation(
   requestId: number
 ) {
   const wallet = await selector.wallet();
-  invalidateCache(contractId);
+  invalidateCache();
   return wallet.signAndSendTransaction({
     receiverId: contractId,
     actions: [
-      functionCall(
-        "revoke_confirmation",
-        { request_id: requestId },
-        GAS_100T,
-        BigInt(0)
-      ),
+      functionCall("revoke_confirmation", { request_id: requestId }, GAS_100T, BigInt(0)),
     ],
   });
 }
@@ -210,16 +208,11 @@ export async function deleteRequest(
   requestId: number
 ) {
   const wallet = await selector.wallet();
-  invalidateCache(contractId);
+  invalidateCache();
   return wallet.signAndSendTransaction({
     receiverId: contractId,
     actions: [
-      functionCall(
-        "delete_request",
-        { request_id: requestId },
-        GAS_100T,
-        BigInt(0)
-      ),
+      functionCall("delete_request", { request_id: requestId }, GAS_100T, BigInt(0)),
     ],
   });
 }
@@ -234,7 +227,6 @@ export async function createWalletViaFactory(
   depositYocto: string
 ) {
   const wallet = await selector.wallet();
-
   return wallet.signAndSendTransaction({
     receiverId: FACTORY_CONTRACT_ID,
     actions: [
