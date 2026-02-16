@@ -13,7 +13,6 @@ import { addStoredWallet } from "@/lib/storage";
 import { FACTORY_CONTRACT_ID } from "@/config/near";
 import {
   Shield,
-  Plus,
   Trash2,
   Loader2,
   AlertTriangle,
@@ -314,70 +313,12 @@ export default function CreateWalletPage() {
             Wallet Members (Signers)
           </label>
           <p className="mb-3 text-xs text-muted">
-            These accounts will be able to propose and approve transactions.
+            Add NEAR accounts that can propose and approve transactions. Enter
+            any valid account ID — it will be verified on-chain.
           </p>
 
-          {/* Member list */}
-          <div className="space-y-2">
-            {members.map((member, idx) => (
-              <div
-                key={`${member.address}-${idx}`}
-                className={`flex items-center gap-2 rounded-lg border p-3 ${
-                  member.isConnectedWallet
-                    ? "border-accent/30 bg-accent-dim"
-                    : member.status === "invalid"
-                    ? "border-danger/30 bg-danger-dim"
-                    : "border-card-border bg-card"
-                }`}
-              >
-                {/* Status icon */}
-                <div className="shrink-0">
-                  {member.status === "checking" ? (
-                    <Loader2 className="h-4 w-4 animate-spin text-muted" />
-                  ) : member.status === "valid" ? (
-                    <CheckCircle2 className="h-4 w-4 text-accent" />
-                  ) : member.status === "invalid" ? (
-                    <XCircle className="h-4 w-4 text-danger" />
-                  ) : (
-                    <User className="h-4 w-4 text-muted" />
-                  )}
-                </div>
-
-                {/* Address */}
-                <div className="flex-1 min-w-0">
-                  <p className="truncate font-mono text-sm">
-                    {member.address}
-                  </p>
-                  {member.status === "invalid" && (
-                    <p className="text-xs text-danger mt-0.5">
-                      Account not found on NEAR
-                    </p>
-                  )}
-                </div>
-
-                {/* Badges & actions */}
-                <div className="flex items-center gap-2 shrink-0">
-                  {member.isConnectedWallet && (
-                    <span className="rounded-md bg-accent/20 px-2 py-0.5 text-xs font-medium text-accent">
-                      You
-                    </span>
-                  )}
-                  {!member.isConnectedWallet && (
-                    <button
-                      onClick={() => removeMember(idx)}
-                      className="rounded-lg p-1.5 text-muted transition-colors hover:bg-danger-dim hover:text-danger"
-                      title="Remove member"
-                    >
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </button>
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
-
-          {/* Add member input */}
-          <div className="mt-3 space-y-2">
+          {/* Add member input — placed first for prominence */}
+          <div className="mb-3 space-y-2">
             <div className="flex gap-2">
               <div className="relative flex-1">
                 <input
@@ -410,27 +351,85 @@ export default function CreateWalletPage() {
               </button>
             </div>
 
-            {/* Quick add buttons */}
-            <div className="flex flex-wrap gap-2">
-              {accountId &&
-                !members.some((m) => m.address === accountId) && (
-                  <button
-                    onClick={addConnectedWallet}
-                    className="inline-flex items-center gap-1.5 rounded-lg border border-dashed border-accent/40 px-3 py-1.5 text-xs text-accent transition-colors hover:bg-accent-dim"
-                  >
-                    <Wallet className="h-3.5 w-3.5" />
-                    Add My Wallet ({accountId})
-                  </button>
-                )}
-              <button
-                onClick={signIn}
-                className="inline-flex items-center gap-1.5 rounded-lg border border-dashed border-card-border px-3 py-1.5 text-xs text-muted transition-colors hover:border-accent hover:text-accent"
-              >
-                <Plus className="h-3.5 w-3.5" />
-                Connect Another Wallet
-              </button>
-            </div>
+            {/* Quick add button for connected wallet */}
+            {accountId &&
+              !members.some((m) => m.address === accountId) && (
+                <button
+                  onClick={addConnectedWallet}
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-dashed border-accent/40 px-3 py-1.5 text-xs text-accent transition-colors hover:bg-accent-dim"
+                >
+                  <Wallet className="h-3.5 w-3.5" />
+                  Add My Wallet ({accountId})
+                </button>
+              )}
           </div>
+
+          {/* Member list */}
+          {members.length > 0 && (
+            <div className="space-y-2">
+              {members.map((member, idx) => (
+                <div
+                  key={`${member.address}-${idx}`}
+                  className={`flex items-center gap-2 rounded-lg border p-3 ${
+                    member.isConnectedWallet
+                      ? "border-accent/30 bg-accent-dim"
+                      : member.status === "invalid"
+                      ? "border-danger/30 bg-danger-dim"
+                      : "border-card-border bg-card"
+                  }`}
+                >
+                  {/* Status icon */}
+                  <div className="shrink-0">
+                    {member.status === "checking" ? (
+                      <Loader2 className="h-4 w-4 animate-spin text-muted" />
+                    ) : member.status === "valid" ? (
+                      <CheckCircle2 className="h-4 w-4 text-accent" />
+                    ) : member.status === "invalid" ? (
+                      <XCircle className="h-4 w-4 text-danger" />
+                    ) : (
+                      <User className="h-4 w-4 text-muted" />
+                    )}
+                  </div>
+
+                  {/* Address */}
+                  <div className="flex-1 min-w-0">
+                    <p className="truncate font-mono text-sm">
+                      {member.address}
+                    </p>
+                    {member.status === "invalid" && (
+                      <p className="text-xs text-danger mt-0.5">
+                        Account not found on NEAR
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Badges & actions */}
+                  <div className="flex items-center gap-2 shrink-0">
+                    {member.isConnectedWallet && (
+                      <span className="rounded-md bg-accent/20 px-2 py-0.5 text-xs font-medium text-accent">
+                        You
+                      </span>
+                    )}
+                    {!member.isConnectedWallet && (
+                      <button
+                        onClick={() => removeMember(idx)}
+                        className="rounded-lg p-1.5 text-muted transition-colors hover:bg-danger-dim hover:text-danger"
+                        title="Remove member"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {members.length === 0 && (
+            <div className="rounded-lg border border-dashed border-card-border p-6 text-center text-sm text-muted">
+              No members added yet. Type a NEAR account ID above to get started.
+            </div>
+          )}
         </div>
 
         {/* Confirmations */}

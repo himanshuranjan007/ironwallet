@@ -13,7 +13,6 @@ import type { WalletSelector } from "@near-wallet-selector/core";
 import { setupModal } from "@near-wallet-selector/modal-ui";
 import type { WalletSelectorModal } from "@near-wallet-selector/modal-ui";
 import { setupMyNearWallet } from "@near-wallet-selector/my-near-wallet";
-import { setupHereWallet } from "@near-wallet-selector/here-wallet";
 import { NETWORK_ID } from "@/config/near";
 
 import "@near-wallet-selector/modal-ui/styles.css";
@@ -52,7 +51,6 @@ export function NearProvider({ children }: { children: ReactNode }) {
         network: NETWORK_ID,
         modules: [
           setupMyNearWallet(),
-          setupHereWallet(),
         ],
       });
 
